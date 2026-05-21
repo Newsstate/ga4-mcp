@@ -37,7 +37,19 @@ export async function POST(req: NextRequest) {
     await mcpServer.connect(transport);
 
     const body = await req.json();
-    const response = await transport.handleRequest(body, Object.fromEntries(req.headers));
+   const headers: Record<string, string> = {};
+req.headers.forEach((value, key) => {
+  headers[key] = value;
+});
+
+let response: unknown;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  response = await (transport as any).handleRequest(body, { headers });
+} catch {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  response = await (transport as any).handleRequest(body, headers);
+}
 
     return NextResponse.json(response, {
       headers: {
