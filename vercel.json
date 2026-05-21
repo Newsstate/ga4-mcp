@@ -14,10 +14,10 @@
       "maxDuration": 30
     }
   },
-  "env": {
-    "GOOGLE_CLIENT_ID": "@google_client_id",
-    "GOOGLE_CLIENT_SECRET": "@google_client_secret",
-    "NEXTAUTH_SECRET": "@nextauth_secret",
-    "NEXTAUTH_URL": "@nextauth_url"
-  }
+"env": {
+  "GOOGLE_CLIENT_ID": "your-actual-google-client-id",
+  "GOOGLE_CLIENT_SECRET": "your-actual-google-client-secret",
+  "NEXTAUTH_SECRET": "your-nextauth-secret",
+  "NEXTAUTH_URL": "https://your-app.vercel.app"
+}
 }
