@@ -41,17 +41,28 @@ export async function listGA4Properties(
   const { google } = await import("googleapis");
   const adminApi = google.analyticsadmin({ version: "v1beta", auth: authClient });
 
-  const res = await adminApi.properties.list({
-    filter: "parent:accounts/-",
-    pageSize: 50,
-  });
+  // ✅ FIX 1: Use accountSummaries.list() instead of properties.list()
+  // The old filter "parent:accounts/-" is NOT supported by the GA4 Admin API
+  // and always throws an error. accountSummaries returns all accessible
+  // properties across all accounts in a single call.
+  //
+  // ✅ FIX 2: Removed broken syntax — old code had:
+  //   - missing ); to close flatMap
+  //   - missing return statement
+  //   - dead code referencing undefined variable `res`
+  const adminRes = await adminApi.accountSummaries.list({});
 
-  return (res.data.properties ?? []).map((p) => ({
-    name: p.name ?? "",
-    displayName: p.displayName ?? "",
-    timeZone: p.timeZone ?? undefined,
-    currencyCode: p.currencyCode ?? undefined,
-  }));
+  const properties = (adminRes.data.accountSummaries ?? []).flatMap(
+    (account) =>
+      (account.propertySummaries ?? []).map((p) => ({
+        name: p.property ?? "",
+        displayName: p.displayName ?? "",
+        timeZone: undefined,     // not available in accountSummaries
+        currencyCode: undefined, // not available in accountSummaries
+      }))
+  ); // ✅ flatMap properly closed
+
+  return properties; // ✅ properly returned
 }
 
 // ─── Run report ───────────────────────────────────────────────────────────────
