@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { buildMCPServer } from "@/lib/mcp";
 import { getAuthenticatedClient } from "@/lib/google";
 import { getTokenCookie } from "@/lib/auth";
-
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
@@ -156,7 +155,7 @@ export async function POST(req: NextRequest) {
 
   // Authenticated tool calls — delegate to MCP server
   try {
-    const mcpServer = buildMCPServer(appUrl);
+
     // Use the bearer token to set credentials if available
     // Tool execution happens via lib/mcp.ts which calls getAuthenticatedClient()
     const result = await handleToolCall(method, (params as { name?: string; arguments?: Record<string, unknown> }) ?? {}, appUrl, bearerToken);
@@ -250,6 +249,54 @@ async function handleToolCall(
           endDate: (args.endDate as string) ?? "today",
           dimensions: dimensionMap[toolName],
           rowLimit: (args.limit as number) ?? 25,
+        });
+        return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+      }
+        case "get_top_pages": {
+        const data = await runGA4Report(authClient, {
+          propertyId: args.propertyId as string,
+          startDate: (args.startDate as string) ?? "7daysAgo",
+          endDate: (args.endDate as string) ?? "today",
+          metrics: ["screenPageViews", "sessions", "bounceRate", "averageSessionDuration"],
+          dimensions: ["pagePath", "pageTitle"],
+          limit: (args.limit as number) ?? 10,
+          orderByMetric: "screenPageViews",
+        });
+        return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+      }
+      case "get_traffic_sources": {
+        const data = await runGA4Report(authClient, {
+          propertyId: args.propertyId as string,
+          startDate: (args.startDate as string) ?? "30daysAgo",
+          endDate: (args.endDate as string) ?? "today",
+          metrics: ["sessions", "activeUsers", "bounceRate"],
+          dimensions: ["sessionDefaultChannelGroup", "sessionSource", "sessionMedium"],
+          limit: (args.limit as number) ?? 20,
+          orderByMetric: "sessions",
+        });
+        return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+      }
+      case "get_audience_overview": {
+        const data = await runGA4Report(authClient, {
+          propertyId: args.propertyId as string,
+          startDate: (args.startDate as string) ?? "30daysAgo",
+          endDate: (args.endDate as string) ?? "today",
+          metrics: ["activeUsers", "sessions", "newUsers"],
+          dimensions: [(args.groupBy as string) ?? "country"],
+          limit: 20,
+          orderByMetric: "activeUsers",
+        });
+        return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+      }
+      case "get_events": {
+        const data = await runGA4Report(authClient, {
+          propertyId: args.propertyId as string,
+          startDate: (args.startDate as string) ?? "7daysAgo",
+          endDate: (args.endDate as string) ?? "today",
+          metrics: ["eventCount", "eventCountPerUser", "totalUsers"],
+          dimensions: ["eventName"],
+          limit: (args.limit as number) ?? 25,
+          orderByMetric: "eventCount",
         });
         return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
       }
