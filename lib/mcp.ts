@@ -5,6 +5,7 @@ import {
   runGA4Report,
   runGA4RealtimeReport,
 } from "./ga4";
+import { listSearchConsoleSites, querySearchAnalytics } from "./searchconsole";
 import { getAuthenticatedClient } from "./google";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -303,5 +304,116 @@ export function buildMCPServer(appUrl: string): McpServer {
     }
   );
 
+  // ── Tool: list_search_console_sites ───────────────────────────────────────
+  server.tool(
+    "list_search_console_sites",
+    "List all websites verified in Google Search Console for the authenticated user.",
+    {},
+    async () => {
+      const auth = await requireAuth();
+      if (!auth)
+        return errorResponse(`Not authenticated. Sign in at ${appUrl} first.`);
+      try {
+        const sites = await listSearchConsoleSites(auth);
+        return jsonResponse({ sites });
+      } catch (err: unknown) {
+        return errorResponse(`Failed to list sites: ${(err as Error).message}`);
+      }
+    }
+  );
+
+  // ── Tool: get_search_queries ───────────────────────────────────────────────
+  server.tool(
+    "get_search_queries",
+    "Get top search queries from Google Search Console with clicks, impressions, CTR and average position.",
+    {
+      siteUrl: z
+        .string()
+        .describe('Site URL exactly as in Search Console, e.g. "https://example.com/" or "sc-domain:example.com"'),
+      startDate: z
+        .string()
+        .default("28daysAgo")
+        .describe('Start date: "7daysAgo", "28daysAgo", or "YYYY-MM-DD"'),
+      endDate: z
+        .string()
+        .default("today")
+        .describe('End date: "today" or "YYYY-MM-DD"'),
+      limit: z.number().int().min(1).max(1000).default(25),
+    },
+    async (args) => {
+      const auth = await requireAuth();
+      if (!auth)
+        return errorResponse(`Not authenticated. Sign in at ${appUrl} first.`);
+      try {
+        const result = await querySearchAnalytics(auth, {
+          siteUrl: args.siteUrl,
+          startDate: args.startDate,
+          endDate: args.endDate,
+          dimensions: ["query"],
+          rowLimit: args.limit,
+        });
+        return jsonResponse(result);
+      } catch (err: unknown) {
+        return errorResponse(`Failed: ${(err as Error).message}`);
+      }
+    }
+  );
+
+  // ── Tool: get_search_pages ─────────────────────────────────────────────────
+  server.tool(
+    "get_search_pages",
+    "Get top pages from Google Search Console showing which URLs get the most clicks and impressions from Google Search.",
+    {
+      siteUrl: z.string().describe("Site URL as registered in Search Console"),
+      startDate: z.string().default("28daysAgo"),
+      endDate: z.string().default("today"),
+      limit: z.number().int().min(1).max(1000).default(25),
+    },
+    async (args) => {
+      const auth = await requireAuth();
+      if (!auth)
+        return errorResponse(`Not authenticated. Sign in at ${appUrl} first.`);
+      try {
+        const result = await querySearchAnalytics(auth, {
+          siteUrl: args.siteUrl,
+          startDate: args.startDate,
+          endDate: args.endDate,
+          dimensions: ["page"],
+          rowLimit: args.limit,
+        });
+        return jsonResponse(result);
+      } catch (err: unknown) {
+        return errorResponse(`Failed: ${(err as Error).message}`);
+      }
+    }
+  );
+
+  // ── Tool: get_search_performance ───────────────────────────────────────────
+  server.tool(
+    "get_search_performance",
+    "Get daily search performance trend from Google Search Console showing clicks, impressions, CTR and position over time.",
+    {
+      siteUrl: z.string().describe("Site URL as registered in Search Console"),
+      startDate: z.string().default("28daysAgo"),
+      endDate: z.string().default("today"),
+    },
+    async (args) => {
+      const auth = await requireAuth();
+      if (!auth)
+        return errorResponse(`Not authenticated. Sign in at ${appUrl} first.`);
+      try {
+        const result = await querySearchAnalytics(auth, {
+          siteUrl: args.siteUrl,
+          startDate: args.startDate,
+          endDate: args.endDate,
+          dimensions: ["date"],
+          rowLimit: 90,
+        });
+        return jsonResponse(result);
+      } catch (err: unknown) {
+        return errorResponse(`Failed: ${(err as Error).message}`);
+      }
+    }
+  );
   return server;
 }
