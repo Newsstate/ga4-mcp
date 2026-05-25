@@ -8,7 +8,6 @@ export async function GET(req: NextRequest) {
   const state = searchParams.get("state") ?? "";
   const redirectUri = searchParams.get("redirect_uri") ?? "";
 
-  // Encode Claude's state + redirect_uri so we can recover them after Google auth
   const combinedState = Buffer.from(
     JSON.stringify({ state, redirectUri })
   ).toString("base64");
