@@ -219,8 +219,11 @@ async function handleToolCall(
   });
         return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
       }
-      case "run_realtime_report": {
-        const data = await runGA4RealtimeReport(authClient, args.propertyId as string);
+     case "run_realtime_report": {
+  const data = await runGA4RealtimeReport(authClient, {
+    propertyId: args.propertyId as string,
+    metrics: (args.metrics as string[]) ?? ["activeUsers"],
+  });
         return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
       }
       default:
