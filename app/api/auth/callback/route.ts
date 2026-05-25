@@ -55,13 +55,13 @@ export async function GET(req: NextRequest) {
       const response = NextResponse.redirect(
         `${claudeRedirectUri}?code=${tempCode}&state=${claudeState}`
       );
-      response.cookies.set(`auth_code_${tempCode}`, tokens.access_token!, {
-        httpOnly: true,
-        secure: true,
-        maxAge: 300, // 5 minutes
-        path: "/",
-      });
-      return response;
+    import { storeAuthCode } from "@/lib/authCodes";
+storeAuthCode(tempCode, tokens.access_token!);
+
+const response = NextResponse.redirect(
+  `${claudeRedirectUri}?code=${tempCode}&state=${claudeState}`
+);
+return response; // No cookie needed
     }
 
     // Normal browser login
