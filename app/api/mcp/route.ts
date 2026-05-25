@@ -124,6 +124,10 @@ export async function POST(req: NextRequest) {
             { name: "get_traffic_sources", description: "Get traffic sources", inputSchema: { type: "object", properties: { propertyId: { type: "string" } }, required: ["propertyId"] } },
             { name: "get_audience_overview", description: "Get audience overview", inputSchema: { type: "object", properties: { propertyId: { type: "string" } }, required: ["propertyId"] } },
             { name: "get_events", description: "Get event data", inputSchema: { type: "object", properties: { propertyId: { type: "string" } }, required: ["propertyId"] } },
+            { name: "list_search_console_sites", description: "List verified Search Console sites", inputSchema: { type: "object", properties: {} } },
+           { name: "get_search_queries", description: "Top search queries with clicks/impressions", inputSchema: { type: "object", properties: { siteUrl: { type: "string" }, startDate: { type: "string" }, endDate: { type: "string" }, limit: { type: "number" } }, required: ["siteUrl"] } },
+          { name: "get_search_pages", description: "Top pages in Google Search results", inputSchema: { type: "object", properties: { siteUrl: { type: "string" }, startDate: { type: "string" }, endDate: { type: "string" }, limit: { type: "number" } }, required: ["siteUrl"] } },
+          { name: "get_search_performance", description: "Daily search performance trend", inputSchema: { type: "object", properties: { siteUrl: { type: "string" }, startDate: { type: "string" }, endDate: { type: "string" } }, required: ["siteUrl"] } },
           ],
         },
         id,
@@ -224,6 +228,29 @@ async function handleToolCall(
     propertyId: args.propertyId as string,
     metrics: (args.metrics as string[]) ?? ["activeUsers"],
   });
+        return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+      }
+     case "list_search_console_sites": {
+        const { listSearchConsoleSites } = await import("@/lib/searchconsole");
+        const sites = await listSearchConsoleSites(authClient);
+        return { content: [{ type: "text", text: JSON.stringify(sites, null, 2) }] };
+      }
+      case "get_search_queries":
+      case "get_search_pages":
+      case "get_search_performance": {
+        const { querySearchAnalytics } = await import("@/lib/searchconsole");
+        const dimensionMap: Record<string, ("query" | "page" | "date")[]> = {
+          get_search_queries: ["query"],
+          get_search_pages: ["page"],
+          get_search_performance: ["date"],
+        };
+        const data = await querySearchAnalytics(authClient, {
+          siteUrl: args.siteUrl as string,
+          startDate: (args.startDate as string) ?? "28daysAgo",
+          endDate: (args.endDate as string) ?? "today",
+          dimensions: dimensionMap[toolName],
+          rowLimit: (args.limit as number) ?? 25,
+        });
         return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
       }
       default:
