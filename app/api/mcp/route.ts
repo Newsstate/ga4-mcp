@@ -1,15 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { buildMCPServer } from "@/lib/mcp";
-import { getAuthenticatedClient } from "@/lib/google";
 import { getTokenCookie } from "@/lib/auth";
+
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers":
-    "Content-Type, Authorization, mcp-session-id",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, mcp-session-id",
 };
 
 function getAppUrl(req: NextRequest): string {
@@ -20,6 +18,20 @@ function getAppUrl(req: NextRequest): string {
   );
 }
 
+const TOOLS_LIST = [
+  { name: "list_properties", description: "List all GA4 properties accessible by the authenticated user.", inputSchema: { type: "object", properties: {} } },
+  { name: "run_report", description: "Run a GA4 analytics report for a date range.", inputSchema: { type: "object", properties: { propertyId: { type: "string" }, metrics: { type: "array", items: { type: "string" } }, dimensions: { type: "array", items: { type: "string" } }, startDate: { type: "string" }, endDate: { type: "string" }, limit: { type: "number" } }, required: ["propertyId"] } },
+  { name: "run_realtime_report", description: "Get realtime active users in the last 30 minutes.", inputSchema: { type: "object", properties: { propertyId: { type: "string" }, metrics: { type: "array", items: { type: "string" } } }, required: ["propertyId"] } },
+  { name: "get_top_pages", description: "Get top pages by page views.", inputSchema: { type: "object", properties: { propertyId: { type: "string" }, startDate: { type: "string" }, endDate: { type: "string" }, limit: { type: "number" } }, required: ["propertyId"] } },
+  { name: "get_traffic_sources", description: "Breakdown of sessions by traffic source and medium.", inputSchema: { type: "object", properties: { propertyId: { type: "string" }, startDate: { type: "string" }, endDate: { type: "string" }, limit: { type: "number" } }, required: ["propertyId"] } },
+  { name: "get_audience_overview", description: "Get audience demographics: country, device, browser.", inputSchema: { type: "object", properties: { propertyId: { type: "string" }, startDate: { type: "string" }, endDate: { type: "string" }, groupBy: { type: "string", enum: ["country", "deviceCategory", "browser", "operatingSystem"] } }, required: ["propertyId"] } },
+  { name: "get_events", description: "Get event counts for a date range.", inputSchema: { type: "object", properties: { propertyId: { type: "string" }, startDate: { type: "string" }, endDate: { type: "string" }, limit: { type: "number" } }, required: ["propertyId"] } },
+  { name: "list_search_console_sites", description: "List all websites verified in Google Search Console.", inputSchema: { type: "object", properties: {} } },
+  { name: "get_search_queries", description: "Get top search queries from Google Search Console with clicks, impressions, CTR and position.", inputSchema: { type: "object", properties: { siteUrl: { type: "string" }, startDate: { type: "string" }, endDate: { type: "string" }, limit: { type: "number" } }, required: ["siteUrl"] } },
+  { name: "get_search_pages", description: "Get top pages from Google Search Console by clicks and impressions.", inputSchema: { type: "object", properties: { siteUrl: { type: "string" }, startDate: { type: "string" }, endDate: { type: "string" }, limit: { type: "number" } }, required: ["siteUrl"] } },
+  { name: "get_search_performance", description: "Get daily search performance trend from Google Search Console.", inputSchema: { type: "object", properties: { siteUrl: { type: "string" }, startDate: { type: "string" }, endDate: { type: "string" } }, required: ["siteUrl"] } },
+];
+
 export async function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: CORS_HEADERS });
 }
@@ -27,7 +39,6 @@ export async function OPTIONS() {
 export async function GET(req: NextRequest) {
   const appUrl = getAppUrl(req);
 
-  // Claude.ai reads WWW-Authenticate to discover OAuth endpoints
   return NextResponse.json(
     {
       jsonrpc: "2.0",
@@ -35,6 +46,7 @@ export async function GET(req: NextRequest) {
         protocolVersion: "2024-11-05",
         capabilities: { tools: {} },
         serverInfo: { name: "GA4 Analytics MCP", version: "1.0.0" },
+        tools: TOOLS_LIST,
       },
       id: 0,
     },
@@ -54,13 +66,11 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const appUrl = getAppUrl(req);
 
-  // Check Bearer token from Claude OR cookie from browser
   const authHeader = req.headers.get("authorization") ?? "";
   const bearerToken = authHeader.startsWith("Bearer ")
     ? authHeader.slice(7)
     : null;
 
-  // If Bearer token present, verify it's a valid Google access token
   let isAuthenticated = false;
   if (bearerToken) {
     try {
@@ -72,7 +82,6 @@ export async function POST(req: NextRequest) {
       isAuthenticated = false;
     }
   } else {
-    // Fallback: cookie-based auth (browser usage)
     const tokens = getTokenCookie();
     isAuthenticated = !!tokens;
   }
@@ -93,7 +102,6 @@ export async function POST(req: NextRequest) {
     params?: unknown;
   };
 
-  // Handle initialize without auth
   if (method === "initialize") {
     return NextResponse.json(
       {
@@ -109,33 +117,17 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Handle tools/list without auth
+  if (method === "notifications/initialized") {
+    return new NextResponse(null, { status: 204, headers: CORS_HEADERS });
+  }
+
   if (method === "tools/list") {
     return NextResponse.json(
-      {
-        jsonrpc: "2.0",
-        result: {
-          tools: [
-            { name: "list_properties", description: "List all GA4 properties", inputSchema: { type: "object", properties: {} } },
-            { name: "run_report", description: "Run a GA4 analytics report", inputSchema: { type: "object", properties: { propertyId: { type: "string" }, metrics: { type: "array", items: { type: "string" } }, dimensions: { type: "array", items: { type: "string" } }, startDate: { type: "string" }, endDate: { type: "string" } }, required: ["propertyId"] } },
-            { name: "run_realtime_report", description: "Get realtime active users", inputSchema: { type: "object", properties: { propertyId: { type: "string" } }, required: ["propertyId"] } },
-            { name: "get_top_pages", description: "Get top pages by views", inputSchema: { type: "object", properties: { propertyId: { type: "string" }, limit: { type: "number" } }, required: ["propertyId"] } },
-            { name: "get_traffic_sources", description: "Get traffic sources", inputSchema: { type: "object", properties: { propertyId: { type: "string" } }, required: ["propertyId"] } },
-            { name: "get_audience_overview", description: "Get audience overview", inputSchema: { type: "object", properties: { propertyId: { type: "string" } }, required: ["propertyId"] } },
-            { name: "get_events", description: "Get event data", inputSchema: { type: "object", properties: { propertyId: { type: "string" } }, required: ["propertyId"] } },
-            { name: "list_search_console_sites", description: "List verified Search Console sites", inputSchema: { type: "object", properties: {} } },
-           { name: "get_search_queries", description: "Top search queries with clicks/impressions", inputSchema: { type: "object", properties: { siteUrl: { type: "string" }, startDate: { type: "string" }, endDate: { type: "string" }, limit: { type: "number" } }, required: ["siteUrl"] } },
-          { name: "get_search_pages", description: "Top pages in Google Search results", inputSchema: { type: "object", properties: { siteUrl: { type: "string" }, startDate: { type: "string" }, endDate: { type: "string" }, limit: { type: "number" } }, required: ["siteUrl"] } },
-          { name: "get_search_performance", description: "Daily search performance trend", inputSchema: { type: "object", properties: { siteUrl: { type: "string" }, startDate: { type: "string" }, endDate: { type: "string" } }, required: ["siteUrl"] } },
-          ],
-        },
-        id,
-      },
+      { jsonrpc: "2.0", result: { tools: TOOLS_LIST }, id },
       { headers: CORS_HEADERS }
     );
   }
 
-  // All other tool calls require auth
   if (!isAuthenticated) {
     return NextResponse.json(
       {
@@ -153,12 +145,13 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Authenticated tool calls — delegate to MCP server
   try {
-
-    // Use the bearer token to set credentials if available
-    // Tool execution happens via lib/mcp.ts which calls getAuthenticatedClient()
-    const result = await handleToolCall(method, (params as { name?: string; arguments?: Record<string, unknown> }) ?? {}, appUrl, bearerToken);
+    const result = await handleToolCall(
+      method,
+      (params as { name?: string; arguments?: Record<string, unknown> }) ?? {},
+      appUrl,
+      bearerToken
+    );
     return NextResponse.json(
       { jsonrpc: "2.0", result, id },
       { headers: CORS_HEADERS }
@@ -188,7 +181,6 @@ async function handleToolCall(
   const { listGA4Properties, runGA4Report, runGA4RealtimeReport } = await import("@/lib/ga4");
   const { google } = await import("googleapis");
 
-  // Build auth client from bearer token or cookie
   let authClient;
   if (bearerToken) {
     const oauth2 = new google.auth.OAuth2();
@@ -212,47 +204,25 @@ async function handleToolCall(
         const props = await listGA4Properties(authClient);
         return { content: [{ type: "text", text: JSON.stringify(props, null, 2) }] };
       }
-    case "run_report": {
-  const data = await runGA4Report(authClient, {
-    propertyId: args.propertyId as string,
-    metrics: args.metrics as string[],
-    dimensions: args.dimensions as string[],
-    startDate: args.startDate as string,
-    endDate: args.endDate as string,
-  });
-        return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
-      }
-     case "run_realtime_report": {
-  const data = await runGA4RealtimeReport(authClient, {
-    propertyId: args.propertyId as string,
-    metrics: (args.metrics as string[]) ?? ["activeUsers"],
-  });
-        return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
-      }
-     case "list_search_console_sites": {
-        const { listSearchConsoleSites } = await import("@/lib/searchconsole");
-        const sites = await listSearchConsoleSites(authClient);
-        return { content: [{ type: "text", text: JSON.stringify(sites, null, 2) }] };
-      }
-      case "get_search_queries":
-      case "get_search_pages":
-      case "get_search_performance": {
-        const { querySearchAnalytics } = await import("@/lib/searchconsole");
-        const dimensionMap: Record<string, ("query" | "page" | "date")[]> = {
-          get_search_queries: ["query"],
-          get_search_pages: ["page"],
-          get_search_performance: ["date"],
-        };
-        const data = await querySearchAnalytics(authClient, {
-          siteUrl: args.siteUrl as string,
-          startDate: (args.startDate as string) ?? "28daysAgo",
+      case "run_report": {
+        const data = await runGA4Report(authClient, {
+          propertyId: args.propertyId as string,
+          metrics: (args.metrics as string[]) ?? ["sessions", "activeUsers"],
+          dimensions: args.dimensions as string[],
+          startDate: (args.startDate as string) ?? "7daysAgo",
           endDate: (args.endDate as string) ?? "today",
-          dimensions: dimensionMap[toolName],
-          rowLimit: (args.limit as number) ?? 25,
+          limit: (args.limit as number) ?? 100,
         });
         return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
       }
-        case "get_top_pages": {
+      case "run_realtime_report": {
+        const data = await runGA4RealtimeReport(authClient, {
+          propertyId: args.propertyId as string,
+          metrics: (args.metrics as string[]) ?? ["activeUsers"],
+        });
+        return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+      }
+      case "get_top_pages": {
         const data = await runGA4Report(authClient, {
           propertyId: args.propertyId as string,
           startDate: (args.startDate as string) ?? "7daysAgo",
@@ -297,6 +267,29 @@ async function handleToolCall(
           dimensions: ["eventName"],
           limit: (args.limit as number) ?? 25,
           orderByMetric: "eventCount",
+        });
+        return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+      }
+      case "list_search_console_sites": {
+        const { listSearchConsoleSites } = await import("@/lib/searchconsole");
+        const sites = await listSearchConsoleSites(authClient);
+        return { content: [{ type: "text", text: JSON.stringify(sites, null, 2) }] };
+      }
+      case "get_search_queries":
+      case "get_search_pages":
+      case "get_search_performance": {
+        const { querySearchAnalytics } = await import("@/lib/searchconsole");
+        const dimensionMap: Record<string, ("query" | "page" | "date")[]> = {
+          get_search_queries: ["query"],
+          get_search_pages: ["page"],
+          get_search_performance: ["date"],
+        };
+        const data = await querySearchAnalytics(authClient, {
+          siteUrl: args.siteUrl as string,
+          startDate: (args.startDate as string) ?? "28daysAgo",
+          endDate: (args.endDate as string) ?? "today",
+          dimensions: dimensionMap[toolName],
+          rowLimit: (args.limit as number) ?? 25,
         });
         return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
       }
