@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
       "https://www.googleapis.com/auth/webmasters.readonly",
     ].join(" ")
   );
-  googleAuthUrl.searchParams.set("access_token_type", "offline");
+  googleAuthUrl.searchParams.set("access_type", "offline");
   googleAuthUrl.searchParams.set("prompt", "consent");
   googleAuthUrl.searchParams.set("state", combinedState);
 
