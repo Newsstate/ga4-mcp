@@ -21,9 +21,14 @@ export async function GET(req: NextRequest) {
   googleAuthUrl.searchParams.set("response_type", "code");
   googleAuthUrl.searchParams.set(
     "scope",
-    "https://www.googleapis.com/auth/analytics.readonly https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile"
+    [
+      "https://www.googleapis.com/auth/analytics.readonly",
+      "https://www.googleapis.com/auth/userinfo.email",
+      "https://www.googleapis.com/auth/userinfo.profile",
+      "https://www.googleapis.com/auth/webmasters.readonly",
+    ].join(" ")
   );
-  googleAuthUrl.searchParams.set("access_type", "offline");
+  googleAuthUrl.searchParams.set("access_token_type", "offline");
   googleAuthUrl.searchParams.set("prompt", "consent");
   googleAuthUrl.searchParams.set("state", combinedState);
 
