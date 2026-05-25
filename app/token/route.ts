@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { consumeAuthCode } from "@/lib/authCodes";
 
 export const dynamic = "force-dynamic";
 
@@ -24,32 +23,26 @@ export async function POST(req: NextRequest) {
   if (grantType !== "authorization_code" || !code) {
     return NextResponse.json(
       { error: "invalid_request" },
-      {
-        status: 400,
-        headers: { "Access-Control-Allow-Origin": "*" },
-      }
+      { status: 400, headers: { "Access-Control-Allow-Origin": "*" } }
     );
   }
 
-  const accessToken = consumeAuthCode(code);
-  if (!accessToken) {
+  try {
+    const accessToken = Buffer.from(code, "base64url").toString("utf-8");
+    if (!accessToken) {
+      return NextResponse.json(
+        { error: "invalid_grant" },
+        { status: 400, headers: { "Access-Control-Allow-Origin": "*" } }
+      );
+    }
+    return NextResponse.json(
+      { access_token: accessToken, token_type: "bearer", expires_in: 3600 },
+      { headers: { "Access-Control-Allow-Origin": "*" } }
+    );
+  } catch {
     return NextResponse.json(
       { error: "invalid_grant" },
-      {
-        status: 400,
-        headers: { "Access-Control-Allow-Origin": "*" },
-      }
+      { status: 400, headers: { "Access-Control-Allow-Origin": "*" } }
     );
   }
-
-  return NextResponse.json(
-    {
-      access_token: accessToken,
-      token_type: "bearer",
-      expires_in: 3600,
-    },
-    {
-      headers: { "Access-Control-Allow-Origin": "*" },
-    }
-  );
 }
