@@ -15,9 +15,9 @@
     }
   },
 "env": {
-  "GOOGLE_CLIENT_ID": "your-actual-google-client-id",
-  "GOOGLE_CLIENT_SECRET": "your-actual-google-client-secret",
-  "NEXTAUTH_SECRET": "your-nextauth-secret",
-  "NEXTAUTH_URL": "https://your-app.vercel.app"
+  "GOOGLE_CLIENT_ID": "26637021817-po52djbdmmvhsktikba4des9ham1rmvn.apps.googleusercontent.com",
+  "GOOGLE_CLIENT_SECRET": "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",
+  "NEXTAUTH_SECRET": "https://ga4-mcp-gamma.vercel.app/",
+  "NEXTAUTH_URL": "https://ga4-mcp-gamma.vercel.app/"
 }
 }
