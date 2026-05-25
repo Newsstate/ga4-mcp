@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createOAuthClient } from "@/lib/google";
 import { setTokenCookie } from "@/lib/auth";
-import { storeAuthCode } from "@/app/token/route";
+import { storeAuthCode } from "@/lib/authCodes";
 import crypto from "crypto";
 
 export const dynamic = "force-dynamic";
