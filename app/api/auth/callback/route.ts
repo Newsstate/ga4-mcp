@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createOAuthClient } from "@/lib/google";
 import { setTokenCookie } from "@/lib/auth";
-import { storeAuthCode } from "@/lib/authCodes";
 import crypto from "crypto";
 
 export const dynamic = "force-dynamic";
@@ -50,16 +49,24 @@ export async function GET(req: NextRequest) {
       scope: tokens.scope ?? undefined,
     });
 
-    // Claude.ai flow — generate a short-lived code and redirect back
+    // Claude.ai flow — store token in a short-lived cookie keyed by temp code
     if (claudeRedirectUri) {
       const tempCode = crypto.randomBytes(32).toString("hex");
-      storeAuthCode(tempCode, tokens.access_token!);
-      return NextResponse.redirect(
+      const response = NextResponse.redirect(
         `${claudeRedirectUri}?code=${tempCode}&state=${claudeState}`
       );
+      response.cookies.set(`auth_code_${tempCode}`, tokens.access_token!, {
+        httpOnly: true,
+        secure: true,
+        maxAge: 300, // 5 minutes
+        path: "/",
+      });
+      return response;
     }
 
+    // Normal browser login
     return NextResponse.redirect(`${appUrl}?auth=success`);
+
   } catch (err: unknown) {
     console.error("[auth/callback] Token exchange failed:", err);
     return NextResponse.redirect(`${appUrl}?error=token_exchange_failed`);
