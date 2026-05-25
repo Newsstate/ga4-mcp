@@ -209,13 +209,14 @@ async function handleToolCall(
         const props = await listGA4Properties(authClient);
         return { content: [{ type: "text", text: JSON.stringify(props, null, 2) }] };
       }
-      case "run_report": {
-        const data = await runGA4Report(authClient, args.propertyId as string, {
-          metrics: args.metrics as string[],
-          dimensions: args.dimensions as string[],
-          startDate: args.startDate as string,
-          endDate: args.endDate as string,
-        });
+    case "run_report": {
+  const data = await runGA4Report(authClient, {
+    propertyId: args.propertyId as string,
+    metrics: args.metrics as string[],
+    dimensions: args.dimensions as string[],
+    startDate: args.startDate as string,
+    endDate: args.endDate as string,
+  });
         return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
       }
       case "run_realtime_report": {
